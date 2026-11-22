@@ -1,0 +1,38 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+env:
+  GODOT_VERSION: "4.3"
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zip ac ve hazirlik
+        run: |
+          unzip -q sunsetbay.zip
+          mkdir -v -p ~/.local/share/godot/export_templates ~/.config/godot sunsetbay/build/android
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          cd sunsetbay
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          cat > ~/.config/godot/editor_settings-4.tres <<EOS
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/android_sdk_path = "${ANDROID_HOME:-/usr/lib/android-sdk}"
+          export/android/java_sdk_path = "${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}"
+          export/android/debug_keystore = "$PWD/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOS
+      - name: APK build
+        run: |
+          cd sunsetbay
+          godot --headless --verbose --import || true
+          godot --headless --verbose --export-debug "Android" build/android/sunsetbay.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sunsetbay-apk
+          path: sunsetbay/build/android/sunsetbay.apk
