@@ -12,14 +12,13 @@ jobs:
       image: barichello/godot-ci:4.3
     steps:
       - uses: actions/checkout@v4
-
       - name: Hazirlik
         run: |
           unzip -q sunsetbay.zip
-          mkdir -v -p ~/.local/share/godot/export_templates ~/.config/godot sunsetbay/build/android
-          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p ~/.local/share/godot/export_templates ~/.config/godot sunsetbay/build/android
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/
           cd sunsetbay
-          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android,O=Android,C=US" -validity 9999 -deststoretype pkcs12
           cat > ~/.config/godot/editor_settings-4.tres <<EOS
           [gd_resource type="EditorSettings" format=3]
           [resource]
@@ -29,38 +28,30 @@ jobs:
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           EOS
-
-      - name: Export ayari yaz
-        run: |
-          cd sunsetbay
           cat > export_presets.cfg <<'EOP'
           [preset.0]
           name="Android"
           platform="Android"
           runnable=true
-          advanced_options=false
-          dedicated_server=false
-          custom_features=""
           export_filter="all_resources"
-          include_filter=""
-          exclude_filter=""
           export_path="build/android/sunsetbay.apk"
-          encryption_include_filters=""
-          encryption_exclude_filters=""
-          encrypt_pck=false
-          encrypt_directory=false
-
           [preset.0.options]
-          custom_template/debug=""
-          custom_template/release=""
           gradle_build/use_gradle_build=false
-          architectures/armeabi-v7a=false
           architectures/arm64-v8a=true
-          architectures/x86=false
-          architectures/x86_64=false
-          keystore/debug=""
-          keystore/debug_user=""
-          keystore/debug_password=""
-          keystore/release=""
-          keystore/release_user=""
-          key
+          version/code=1
+          version/name="1.0"
+          package/unique_name="com.sunsetbay.game"
+          package/name="Sunset Bay"
+          package/signed=true
+          EOP
+      - name: APK build
+        run: |
+          cd sunsetbay
+          godot --headless --import || true
+          godot --headless --export-debug "Android" build/android/sunsetbay.apk
+          ls -la build/android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sunsetbay-apk
+          path: sunsetbay/build/android/sunsetbay.apk
+          
